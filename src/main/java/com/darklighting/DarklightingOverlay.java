@@ -61,8 +61,8 @@ public class DarklightingOverlay extends Overlay {
 
         Dimension returnDimension = new Dimension(gameWidth,gameHeight);
 
-        if((rectangles.size() == 0 && unlitColor.getAlpha() == 255)
-        || (rectangles.size() > 0 && litColor.getAlpha() == 255)) {
+        if((rectangles.size() == 0 && unlitColor.getAlpha() == 0)
+        || (rectangles.size() > 0 && litColor.getAlpha() == 0)) {
             return returnDimension;
         }
 

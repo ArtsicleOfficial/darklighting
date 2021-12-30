@@ -49,7 +49,6 @@ public class DarklightingPlugin extends Plugin
 
 
 	public ArrayList<WorldPoint> groundMarkers = new ArrayList<>();
-	public ArrayList<NpcSpawned> nearbyEntities = new ArrayList<>();
 	public ArrayList<ItemSpawned> nearbyItems = new ArrayList<>();
 
 	public File markers = new File(RuneLite.RUNELITE_DIR,"darklightmarkers.txt");
@@ -132,18 +131,6 @@ public class DarklightingPlugin extends Plugin
 		}
 	}
 
-
-	@Subscribe
-	public void onNpcSpawned(NpcSpawned npcSpawned) {
-		nearbyEntities.add(npcSpawned);
-	}
-
-	@Subscribe
-	public void onNpcDespawned(NpcDespawned npcDespawned)
-	{
-		nearbyEntities.removeIf(spawned -> spawned.getNpc().equals(npcDespawned.getNpc()));
-	}
-
 	@Subscribe
 	public void onItemSpawned(ItemSpawned itemSpawned) {
 		nearbyItems.add(itemSpawned);
@@ -212,9 +199,6 @@ public class DarklightingPlugin extends Plugin
 		if(client.getGameState().getState() != GameState.LOGGED_IN.getState()) {
 			return;
 		}
-		if(client.isMenuOpen()) {
-			return;
-		}
 
 		ArrayList<Rectangle> allRects = new ArrayList<>();
 		//Ground markers
@@ -266,38 +250,31 @@ public class DarklightingPlugin extends Plugin
 			allRects.add(overlay.getRectangle(Perspective.getCanvasTilePoly(client, localPoint)));
 		}
 		//Entity markers
-		ArrayList<NpcSpawned> toRemove = new ArrayList<>();
-		for(NpcSpawned spawned : nearbyEntities) {
+		for(NPC spawned : client.getNpcs()) {
 			if(config.entityNames().split(",").length == 0 || config.entityNames().split(",")[0].isEmpty()) {
 				continue;
 			}
-			if(spawned == null || spawned.getNpc() == null || spawned.getNpc().getWorldLocation() == null || spawned.getNpc().getName() == null) {
+			if(spawned == null || spawned.getModel() == null || spawned.getLocalLocation() == null) {
 				continue;
 			}
-			if(spawned.getNpc().getWorldLocation().distanceTo2D(client.getLocalPlayer().getWorldLocation()) > config.maxDistance()) {
+			if(spawned.getWorldLocation().distanceTo2D(client.getLocalPlayer().getWorldLocation()) > config.maxDistance()) {
 				continue;
 			}
 			boolean has = false;
 			for(String s : config.entityNames().split(",")) {
-				if(spawned.getNpc().getName().toLowerCase().replaceAll(" ","").startsWith(s.toLowerCase().replaceAll(" ",""))) {
+				if(spawned.getName().toLowerCase().replaceAll(" ","").startsWith(s.toLowerCase().replaceAll(" ",""))) {
 					has = true;
 				}
 			}
 			if(!has) {
 				continue;
 			}
-			if(spawned.getNpc().getHealthRatio() == 0) {
-				toRemove.add(spawned);
+			Shape shape = Perspective.getClickbox(client, spawned.getModel(), spawned.getOrientation(), spawned.getLocalLocation());
+			if(shape == null) {
+				continue;
 			}
-			try {
-				Rectangle rect = Perspective.getClickbox(client, spawned.getNpc().getModel(), spawned.getNpc().getOrientation(), spawned.getActor().getLocalLocation()).getBounds();
-				allRects.add(overlay.getRectangle(rect));
-			} catch (NullPointerException ignored) {
-				//probably the player hasn't loaded in yet
-			}
-		}
-		for(NpcSpawned s : toRemove) {
-			nearbyEntities.remove(s);
+			Rectangle rect = shape.getBounds();
+			allRects.add(overlay.getRectangle(rect));
 		}
 		overlay.update(client.getViewportWidth(),client.getViewportHeight(), allRects);
 	}
